@@ -1,12 +1,15 @@
 # Paper Plugin Dev — Claude Code Skill
 
+[中文版](README_CN.md) | English
+
 A comprehensive [Claude Code](https://claude.ai/code) skill for developing Minecraft server plugins with the Paper API. Covers everything from Java basics to advanced Paper features.
 
 ## What This Skill Covers
 
 | Topic | Description |
 |-------|-------------|
-| **Project Setup** | Gradle build script, project structure, JDK 21+ configuration |
+| **Project Setup** | Gradle + Maven + Kotlin DSL, VSCode/IntelliJ, JDK 21+ configuration |
+| **Plugin Architecture** | Manager pattern, ItemsUtils factory, PluginInstance singleton |
 | **Plugin Lifecycle** | `onLoad()` → `onEnable()` → `onDisable()`, main class patterns |
 | **plugin.yml / paper-plugin.yml** | Metadata, dependencies, permissions, load order |
 | **Event System** | Listeners, priorities, cancellation, custom events |
@@ -19,7 +22,16 @@ A comprehensive [Claude Code](https://claude.ai/code) skill for developing Minec
 | **Data Components (1.20.5+)** | Modern item data system |
 | **AsyncChatEvent** | Modern chat handling with Adventure |
 | **Complete Templates** | Full working plugin with events, commands, PDC, and config |
-| **Debugging** | Stacktrace reading, common errors, remote debugging, Paper debug commands |
+| **Debugging** | Stacktrace reading, local test server, remote debugging, Paper debug commands |
+| **README & Licensing** | Plugin README template, GPLv3/MIT guidance |
+| **DRY gradle.properties** | Single-source version/name management |
+| **Unit Testing** | JUnit 5 + Mockito for Paper plugin testing |
+| **Publishing (CI/CD)** | GitHub Actions, Modrinth/CurseForge via mc-publish |
+| **Advanced Topics** | Paperweight Userdev (NMS), Registry API (1.21+), Database (HikariCP) |
+| **Scoreboard & BossBar** | Sidebar, below-name, tab list, BossBar API, team prefix/suffix |
+| **Custom Inventory / GUI** | Basic inventories, click handlers, CustomInventoryHolder, GUI libraries |
+| **Ecosystem Integrations** | Vault economy, PlaceholderAPI, BungeeCord/Velocity plugin messaging |
+| **Best Practices** | 24-item checklist covering all aspects of modern Paper plugin development |
 
 ## Installation
 
@@ -84,4 +96,4 @@ MIT — use it, modify it, share it.
 
 ## Contributing
 
-Found a bug or want to add more patterns? PRs welcome! This skill is maintained at [github.com/Larkdream233/paper-plugin-dev](https://github.com/Larkdream233/paper-plugin-dev).
+Found a bug or want to add more patterns? PRs welcome! This skill is maintained at [github.com/TiQIMENG/paper-plugin-dev](https://github.com/TiQIMENG/paper-plugin-dev).

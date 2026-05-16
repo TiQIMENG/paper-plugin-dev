@@ -1,7 +1,7 @@
 ---
 name: paper-plugin-dev
 description: This skill should be used when the user asks to create, develop, or debug PaperMC/Minecraft server plugins. Covers Java basics for beginners, Paper API, Bukkit API, event systems, command systems (Brigadier), scheduling, Persistent Data Containers, Adventure text, configuration, and plugin debugging. Triggers on: "Paper plugin", "Bukkit plugin", "Minecraft plugin", "papermc", "spigot plugin", "/paper", "/bukkit", or when writing Java code that imports org.bukkit or io.papermc.paper.
-version: 1.0.0
+version: 3.0.0
 ---
 
 # Paper Plugin Development Skill
@@ -23,14 +23,38 @@ Comprehensive guide for developing Minecraft server plugins with the Paper API. 
 
 ### Required Tools
 
-| Tool | Purpose |
-|------|---------|
-| JDK 21+ | Paper requires Java 21+ |
-| IntelliJ IDEA | Recommended IDE (Community Edition is free) |
-| Paper Server | Local test server |
+| Tool | Purpose | Download |
+|------|---------|----------|
+| JDK 21+ | Paper requires Java 21 | https://adoptium.net |
+| IntelliJ IDEA | Recommended IDE (Community free) | https://jetbrains.com/idea |
+| VSCode (alternative) | Lighter-weight IDE option | https://code.visualstudio.com |
+| Paper Server | Local test server | https://papermc.io/downloads |
 
-### Gradle Build Script (build.gradle.kts)
+### IntelliJ Plugin (strongly recommended)
 
+In IntelliJ: **File → Settings → Plugins → Search "Minecraft Development" → Install → Restart IDE**
+
+This plugin provides:
+- New Project wizard with Paper platform pre-configured
+- plugin.yml / paper-plugin.yml autocomplete and validation
+- Gradle/Maven build template generation
+- Inline API documentation
+
+### Option A: IntelliJ Wizard (easiest for beginners)
+
+1. File → New → Project → **Minecraft** (left sidebar)
+2. Platform: **Paper**, fill in Group ID, Artifact ID, Plugin Name, Main Class
+3. Build System: **Gradle** (recommended) or **Maven**
+4. Click Create — everything is generated automatically
+
+### Option B: Gradle (manual, recommended)
+
+#### settings.gradle.kts
+```kotlin
+rootProject.name = "my-plugin"
+```
+
+#### build.gradle.kts
 ```kotlin
 plugins {
     java
@@ -51,6 +75,7 @@ repositories {
 
 dependencies {
     // MUST use compileOnly — the server provides the API at runtime
+    // NEVER use implementation — it will cause class conflicts!
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
 }
 
@@ -65,6 +90,65 @@ tasks {
 }
 ```
 
+### Option C: Maven (pom.xml)
+
+```xml
+<project>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example</groupId>
+    <artifactId>myplugin</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>papermc</id>
+            <url>https://repo.papermc.io/repository/maven-public/</url>
+        </repository>
+    </repositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.papermc.paper</groupId>
+            <artifactId>paper-api</artifactId>
+            <version>1.21.1-R0.1-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>${project.artifactId}-${project.version}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
+
+**Maven scope rule**: Use `<scope>provided</scope>` — same as Gradle's `compileOnly`. The server provides the API at runtime.
+
+### VSCode Setup (alternative IDE)
+
+If using VSCode instead of IntelliJ, install these extensions:
+- **Extension Pack for Java** (vscjava.vscode-java-pack)
+- **Gradle for Java** (vscjava.vscode-gradle) — if using Gradle
+- **Maven for Java** (vscjava.vscode-maven) — if using Maven
+
+Then create the project with `gradle init --type basic --dsl kotlin` (or manually).
+
 ### Standard Project Structure
 
 ```
@@ -72,17 +156,191 @@ my-plugin/
 ├── src/main/java/com/example/myplugin/
 │   └── MyPlugin.java              # Main class
 ├── src/main/resources/
-│   ├── plugin.yml                 # Plugin metadata
+│   ├── plugin.yml                 # Plugin metadata (REQUIRED)
 │   └── config.yml                 # Default config (optional)
-├── build.gradle.kts
+├── build.gradle.kts               # or pom.xml for Maven
 └── settings.gradle.kts
 ```
 
-Build with `./gradlew build`, output JAR in `build/libs/`.
+### Building
+
+| Command | Build System |
+|---------|-------------|
+| `./gradlew build` | Gradle — output in `build/libs/` |
+| `mvn package` | Maven — output in `target/` |
+| `./gradlew runServer` | Gradle — also starts a test server |
+| `./gradlew clean build` | Gradle — clean rebuild |
+
+### Version Compatibility
+
+| Minecraft | Java | Paper API |
+|-----------|------|-----------|
+| 1.21+ | JDK 21 | `1.21.x-R0.1-SNAPSHOT` |
+| 1.20.5-1.20.6 | JDK 21 | `1.20.6-R0.1-SNAPSHOT` |
+| 1.17-1.20.4 | JDK 17 | Match server version |
+| 1.8.8-1.16 | JDK 8 | Use Spigot repo (Paper stopped hosting old versions) |
+
+For 1.8.8-1.16, switch to the Spigot repository:
+```
+https://hub.spigotmc.org/nexus/content/repositories/snapshots/
+```
+And use artifact `org.spigotmc:spigot-api:1.8.8-R0.1-SNAPSHOT`.
+
+### Kotlin Project Setup
+
+If the user wants Kotlin instead of Java, use Gradle with Kotlin DSL:
+
+```kotlin
+plugins {
+    kotlin("jvm") version "2.0.0"
+    id("xyz.jpenilla.run-paper") version "2.3.1"
+}
+
+group = "com.example"
+version = "1.0.0"
+
+repositories {
+    mavenCentral()
+    maven("https://repo.papermc.io/repository/maven-public/")
+}
+
+dependencies {
+    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions.jvmTarget = "21"
+}
+```
+
+**Building Kotlin plugins**: `./gradlew build` produces two JARs in `build/libs/`:
+- `plugin-1.0.0.jar` — plugin code only (use when other Kotlin plugins exist on the server)
+- `plugin-1.0.0-all.jar` — includes Kotlin stdlib (use when this is the only Kotlin plugin; otherwise conflicts)
 
 ---
 
-## 2. Plugin Main Class & Lifecycle
+## 2. Plugin Architecture Patterns
+
+### Manager Pattern (recommended for medium/large plugins)
+
+Split features into Manager classes, each responsible for one area. A central `PluginMgr` coordinates them:
+
+```java
+// Base Manager class
+public abstract class Manager {
+    protected final JavaPlugin plugin;
+
+    public Manager(JavaPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    public abstract void register();  // Register listeners, commands, tasks
+}
+
+// Example feature manager
+public class KillManager extends Manager {
+    private final NamespacedKey killsKey;
+    private final NamespacedKey deathsKey;
+
+    public KillManager(JavaPlugin plugin) {
+        super(plugin);
+        this.killsKey = new NamespacedKey(plugin, "kills");
+        this.deathsKey = new NamespacedKey(plugin, "deaths");
+    }
+
+    @Override
+    public void register() {
+        plugin.getServer().getPluginManager().registerEvents(new KillListener(this), plugin);
+        // Register commands via LifecycleEvents...
+    }
+
+    public int getKills(Player player) {
+        return player.getPersistentDataContainer()
+            .getOrDefault(killsKey, PersistentDataType.INTEGER, 0);
+    }
+    // ...
+}
+
+// Central coordinator
+public class PluginMgr extends Manager {
+    private final KillManager killManager;
+    private final HomeManager homeManager;
+
+    public PluginMgr(JavaPlugin plugin) {
+        super(plugin);
+        this.killManager = new KillManager(plugin);
+        this.homeManager = new HomeManager(plugin);
+    }
+
+    @Override
+    public void register() {
+        killManager.register();
+        homeManager.register();
+    }
+
+    public KillManager getKillManager() { return killManager; }
+    public HomeManager getHomeManager() { return homeManager; }
+}
+
+// In main class:
+public class MyPlugin extends JavaPlugin {
+    private PluginMgr pluginMgr;
+
+    @Override
+    public void onEnable() {
+        pluginMgr = new PluginMgr(this);
+        pluginMgr.register();
+    }
+
+    public PluginMgr getPluginMgr() { return pluginMgr; }
+}
+```
+
+### ItemsUtils Pattern (centralize item creation)
+
+```java
+public final class ItemsUtils {
+
+    private ItemsUtils() {} // Utility class
+
+    public static ItemStack createItem(Material material, int amount, String name, List<String> lore) {
+        ItemStack item = ItemStack.of(material, amount);
+        item.editMeta(meta -> {
+            meta.displayName(Component.text(name, NamedTextColor.WHITE));
+            if (lore != null && !lore.isEmpty()) {
+                meta.lore(lore.stream()
+                    .map(l -> Component.text(l, NamedTextColor.GRAY))
+                    .collect(Collectors.toList()));
+            }
+        });
+        return item;
+    }
+
+    public static ItemStack createSkull(int amount, String name, List<String> lore, String owner) {
+        ItemStack skull = ItemStack.of(Material.PLAYER_HEAD, amount);
+        skull.editMeta(meta -> {
+            meta.displayName(Component.text(name, NamedTextColor.WHITE));
+            if (lore != null && !lore.isEmpty()) {
+                meta.lore(lore.stream()
+                    .map(l -> Component.text(l, NamedTextColor.GRAY))
+                    .collect(Collectors.toList()));
+            }
+            if (meta instanceof SkullMeta skullMeta) {
+                skullMeta.setOwningPlayer(Bukkit.getOfflinePlayer(owner));
+            }
+        });
+        return skull;
+    }
+}
+```
+
+---
+
+## 3. Plugin Main Class & Lifecycle
 
 ```java
 package com.example.myplugin;
@@ -139,7 +397,7 @@ public class MyPlugin extends JavaPlugin {
 
 ---
 
-## 3. Plugin Metadata Files
+## 4. Plugin Metadata Files
 
 ### plugin.yml (standard, always works)
 
@@ -192,7 +450,7 @@ If both files exist, Paper prefers `paper-plugin.yml`.
 
 ---
 
-## 4. Event System
+## 5. Event System
 
 Events are the core mechanism. Paper broadcasts an event for everything that happens in the game; your plugin listens and reacts.
 
@@ -322,7 +580,7 @@ if (!event.isCancelled()) {
 
 ---
 
-## 5. Command System (Brigadier)
+## 6. Command System (Brigadier)
 
 ### Option A: BasicCommand Interface (simpler)
 
@@ -440,7 +698,7 @@ getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
 
 ---
 
-## 6. Scheduler — Timed & Repeating Tasks
+## 7. Scheduler — Timed & Repeating Tasks
 
 Paper uses **ticks**. 1 second = 20 ticks.
 
@@ -498,7 +756,7 @@ getServer().getScheduler().runTaskAsynchronously(this, () -> {
 
 ---
 
-## 7. Persistent Data Container (PDC)
+## 8. Persistent Data Container (PDC)
 
 PDC attaches custom data to game objects (players, entities, items, chunks, worlds). It persists automatically with the object.
 
@@ -591,7 +849,7 @@ public class KillTracker implements Listener {
 
 ---
 
-## 8. Configuration (config.yml)
+## 9. Configuration (config.yml)
 
 ### Default config.yml (in src/main/resources/)
 
@@ -661,7 +919,7 @@ public class PluginConfig {
 
 ---
 
-## 9. Adventure Text & UI
+## 10. Adventure Text & UI
 
 Paper uses the **Adventure** library for rich text. Never use legacy `§` color codes or `ChatColor`.
 
@@ -736,7 +994,7 @@ player.showTitle(Title.title(
 
 ---
 
-## 10. Common API Operations
+## 11. Common API Operations
 
 ### Players
 
@@ -838,7 +1096,7 @@ getServer().addRecipe(recipe);
 
 ---
 
-## 11. Data Component API (1.20.5+)
+## 12. Data Component API (1.20.5+)
 
 Modern item data system replacing NBT tags:
 
@@ -853,7 +1111,7 @@ itemStack.setData(DataComponentTypes.ENCHANTMENTS,
 
 ---
 
-## 12. AsyncChatEvent (Modern Chat Handling)
+## 13. AsyncChatEvent (Modern Chat Handling)
 
 ```java
 import io.papermc.paper.event.player.AsyncChatEvent;
@@ -883,7 +1141,7 @@ AsyncChatEvent is async — use `getScheduler().runTask()` to access Bukkit API.
 
 ---
 
-## 13. Complete Plugin Template
+## 14. Complete Plugin Template
 
 Here is a complete, working plugin demonstrating all core concepts:
 
@@ -1098,7 +1356,7 @@ broadcast-tip: "Use /stats to check your kill/death record!"
 
 ---
 
-## 14. Debugging
+## 15. Debugging
 
 ### Stacktrace Reading
 
@@ -1137,6 +1395,41 @@ Add JVM args to server start script:
 ```
 Then connect via IntelliJ: Run → Attach to Process (Remote JVM Debug on port 5005).
 
+### Local Test Server Setup
+
+**Option A — run-paper Gradle plugin (automated):**
+```bash
+./gradlew runServer      # Auto-downloads Paper, starts server with your plugin
+```
+
+**Option B — Manual server setup:**
+1. Download Paper JAR from https://papermc.io/downloads
+2. Place it in a `server/` folder, create a startup script:
+
+   **Windows (run.bat):**
+   ```bat
+   java -Xms2G -Xmx2G -jar paper-1.21.1-xxx.jar nogui
+   pause
+   ```
+
+   **macOS/Linux (run.sh):**
+   ```bash
+   #!/bin/bash
+   cd "$(dirname "$0")"
+   exec java -Xms2G -Xmx2G -jar paper-1.21.1-xxx.jar nogui
+   ```
+
+3. Run the server once — it will stop and create `eula.txt`
+4. Edit `eula.txt`: set `eula=true`
+5. Put your plugin JAR into `plugins/` folder
+6. Start the server again
+7. Join with Minecraft client → Multiplayer → Direct Connection → `localhost`
+
+**Verification:**
+- Console should show: `[MyPlugin] MyPlugin v1.0.0 enabled!`
+- In-game: run `/plugins` — your plugin should appear in **green**
+- Red name = plugin failed to load; check console for errors
+
 ### Logger
 
 ```java
@@ -1152,7 +1445,66 @@ if (getConfig().getBoolean("debug", false)) {
 
 ---
 
-## 15. Java Basics for Beginners
+## 16. Plugin README & Licensing
+
+### README Template
+
+Every plugin repo should include a clear README:
+
+```markdown
+# PluginName
+Brief description of what your plugin does.
+
+## Features
+- Feature 1: Description
+- Feature 2: Description
+
+## Commands
+| Command | Description | Permission |
+|---------|-------------|------------|
+| `/cmd1` | What it does | `plugin.cmd1` |
+| `/cmd2 <arg>` | What it does | `plugin.cmd2` |
+
+## Permissions
+| Permission | Description | Default |
+|-----------|-------------|---------|
+| `plugin.use` | Basic usage | true |
+| `plugin.admin` | Admin commands | op |
+
+## Configuration
+Explain config.yml structure and key settings.
+
+## Installation
+1. Download the JAR from Releases
+2. Place in `plugins/` folder
+3. Restart server
+4. Configure `plugins/PluginName/config.yml`
+
+## Building from Source
+```bash
+./gradlew build    # or: mvn package
+```
+Output in `build/libs/` (or `target/` for Maven).
+
+## Dependencies
+- Paper 1.21+ (or Spigot 1.20+)
+- Java 21+
+- (List any plugin dependencies: Vault, LuckPerms, etc.)
+
+## License
+MIT (or GPLv3 — note: Bukkit/Paper API are GPLv3, your plugin may need to match)
+```
+
+### Licensing Notes
+
+- **Paper API** and **Spigot API** are licensed under **GPL v3**
+- If your plugin links against them, it may need to be GPLv3 too
+- MIT is fine for the *code you write*, but be aware of the GPL implications
+- Template repos and skill content can use MIT
+
+---
+
+## 17. Java Basics for Beginners
 
 When the user is new to Java, reinforce these fundamentals:
 
@@ -1259,25 +1611,604 @@ player.teleportAsync(loc).thenAccept(success -> {
 
 ---
 
-## 16. Best Practices Summary
+## 18. DRY gradle.properties Pattern
 
-1. **compileOnly for paper-api** — never bundle the API into your JAR
-2. **Separate listeners, commands, and config into distinct classes** — don't put everything in the main class
-3. **Use Adventure Components, not legacy ChatColor** — Paper APIs expect Components
-4. **Use PDC, not NBT reflection** — PDC is the stable, official API for custom data
+Instead of hardcoding plugin info in multiple places, define everything once in `gradle.properties`:
+
+```properties
+# gradle.properties
+group=com.example
+pluginName=MyPlugin
+version=1.0.0
+description=An awesome Paper plugin
+author=YourName
+apiVersion=1.21
+paperVersion=1.21.1-R0.1-SNAPSHOT
+```
+
+Then reference in `build.gradle.kts`:
+```kotlin
+group = project.properties["group"] as String
+version = project.properties["version"] as String
+
+dependencies {
+    compileOnly("io.papermc.paper:paper-api:${project.properties["paperVersion"]}")
+}
+
+tasks.processResources {
+    filesMatching("plugin.yml") {
+        expand(project.properties)
+    }
+}
+```
+
+And use placeholders in `plugin.yml`:
+```yaml
+name: ${pluginName}
+version: ${version}
+main: ${group}.${pluginName}.${pluginName}
+api-version: ${apiVersion}
+description: ${description}
+author: ${author}
+```
+
+This follows the **DRY principle** — change a value once in gradle.properties and it updates everywhere.
+
+---
+
+## 19. Unit Testing Paper Plugins
+
+Test Paper plugins with JUnit 5 + Mockito:
+
+```kotlin
+// build.gradle.kts additions
+dependencies {
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.0")
+    testImplementation("org.mockito:mockito-core:5.12.0")
+    testImplementation("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+```
+
+```java
+// src/test/java/com/example/myplugin/MyPluginTest.java
+import org.bukkit.Server;
+import org.bukkit.plugin.PluginManager;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.*;
+
+class MyPluginTest {
+    private MyPlugin plugin;
+    private Server mockServer;
+    private PluginManager mockPluginManager;
+
+    @BeforeEach
+    void setUp() {
+        mockServer = mock(Server.class);
+        mockPluginManager = mock(PluginManager.class);
+        when(mockServer.getPluginManager()).thenReturn(mockPluginManager);
+
+        plugin = mock(MyPlugin.class);
+        when(plugin.getServer()).thenReturn(mockServer);
+        // Use doCallRealMethod() for methods you want to test directly
+    }
+
+    @Test
+    void testOnEnable_registersListeners() {
+        doCallRealMethod().when(plugin).onEnable();
+        plugin.onEnable();
+        verify(mockPluginManager, atLeastOnce()).registerEvents(any(), eq(plugin));
+    }
+}
+```
+
+**Testing patterns:**
+- **Unit test** listener/command logic by injecting mocked dependencies
+- **Integration test** against a real Paper server via `runServer` Gradle task
+- **Mock Bukkit/Paper API objects** using `mock()` — Server, Player, World, etc.
+- Test event handlers by creating mock events and calling the handler directly
+
+---
+
+## 20. Publishing & Distribution
+
+### GitHub Actions CI/CD
+
+Basic build workflow (`.github/workflows/build.yml`):
+```yaml
+name: Build
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+      - run: ./gradlew build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin
+          path: build/libs/*.jar
+```
+
+### Publishing to Modrinth & CurseForge
+
+Use the [mc-publish](https://github.com/marketplace/actions/mc-publish) GitHub Action:
+
+```yaml
+- uses: Kir-Antipov/mc-publish@v4
+  with:
+    modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+    modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+    curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+    curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Set repository secrets in Settings → Secrets and Variables → Actions:
+- `MODRINTH_TOKEN`: Modrinth PAT with "Write projects" + "Create versions" scopes
+- `CURSEFORGE_TOKEN`: CurseForge API token
+- Variables for project IDs: `MODRINTH_PROJECT_ID`, `CURSEFORGE_PROJECT_ID`
+
+---
+
+## 21. Advanced Topics
+
+### Paperweight Userdev (NMS Access)
+
+For plugins that need access to Minecraft's internal (NMS) code:
+
+```kotlin
+plugins {
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.10"
+}
+
+dependencies {
+    paperweight.paperDevBundle("1.21.1-R0.1-SNAPSHOT")
+}
+```
+
+This provides Mojang-mapped NMS classes while keeping your plugin compatible.
+
+### Custom Registry API (1.21+)
+
+Paper 1.21+ supports custom enchantments via the Registry API:
+
+```java
+// Requires paper-plugin.yml with bootstrapper
+// Custom enchantment registration:
+import io.papermc.paper.registry.RegistryKey;
+import io.papermc.paper.registry.TypedKey;
+
+// Define custom enchantment key
+TypedKey<Enchantment> CUSTOM_ENCHANT = TypedKey.create(
+    RegistryKey.ENCHANTMENT,
+    new NamespacedKey(plugin, "custom_enchant")
+);
+
+// Register via RegistryAccess
+RegistryAccess registryAccess = RegistryAccess.registryAccess();
+// ... full registration code in bootstrapper
+```
+
+See [SaberSupe/CustomEnchantExample](https://github.com/SaberSupe/CustomEnchantExample) for a complete example.
+
+### Database Integration
+
+For large data persistence, use HikariCP connection pool:
+
+```kotlin
+dependencies {
+    implementation("com.zaxxer:HikariCP:5.1.0")
+    // Choose one:
+    implementation("org.xerial:sqlite-jdbc:3.46.0")     // SQLite (file-based)
+    implementation("com.mysql:mysql-connector-j:9.0.0")   // MySQL
+}
+```
+
+```java
+HikariConfig config = new HikariConfig();
+config.setJdbcUrl("jdbc:sqlite:plugins/MyPlugin/data.db");
+// or: config.setJdbcUrl("jdbc:mysql://localhost:3306/db");
+// config.setUsername("user");
+// config.setPassword("pass");
+HikariDataSource dataSource = new HikariDataSource(config);
+
+// Always use in async tasks:
+getServer().getScheduler().runTaskAsynchronously(this, () -> {
+    try (Connection conn = dataSource.getConnection();
+         PreparedStatement ps = conn.prepareStatement("SELECT * FROM players WHERE uuid = ?")) {
+        ps.setString(1, uuid.toString());
+        ResultSet rs = ps.executeQuery();
+        // ... process results
+    } catch (SQLException e) {
+        getLogger().severe("Database error: " + e.getMessage());
+    }
+});
+```
+
+---
+
+## 22. Scoreboard, BossBar & Tab List
+
+### Scoreboard (Sidebar)
+
+```java
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.DisplaySlot;
+
+ScoreboardManager manager = Bukkit.getScoreboardManager();
+Scoreboard board = manager.getNewScoreboard();
+
+Objective obj = board.registerNewObjective("myboard", Criteria.DUMMY,
+    Component.text("=== My Server ===", NamedTextColor.GOLD));
+obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+
+// Add scores (higher score = higher on the sidebar)
+Score score1 = obj.getScore(Component.text("Player:", NamedTextColor.WHITE)
+    .append(Component.text(player.getName(), NamedTextColor.YELLOW)));
+score1.setScore(5);
+Score score2 = obj.getScore(Component.text("Kills: 0", NamedTextColor.GREEN));
+score2.setScore(4);
+Score score3 = obj.getScore(Component.text("Coins: 100", NamedTextColor.GOLD));
+score3.setScore(3);
+
+player.setScoreboard(board);
+```
+
+**Dynamic updates** — use a repeating scheduler task:
+```java
+getServer().getScheduler().runTaskTimer(this, () -> {
+    for (Player p : Bukkit.getOnlinePlayers()) {
+        Scoreboard sb = p.getScoreboard();
+        Objective obj = sb.getObjective("myboard");
+        if (obj != null) {
+            obj.getScore(Component.text("Online: " + Bukkit.getOnlinePlayers().size()))
+                .setScore(1);
+        }
+    }
+}, 0L, 20L); // update every second
+```
+
+### BossBar
+
+```java
+import org.bukkit.boss.BossBar;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BarFlag;
+
+// Create
+BossBar bar = Bukkit.createBossBar(
+    new NamespacedKey(plugin, "my_bar"),
+    "Loading...",
+    BarColor.BLUE,
+    BarStyle.SOLID,
+    BarFlag.DARKEN_SKY  // optional flags
+);
+
+// Show to all players
+bar.setVisible(true);
+bar.addPlayer(player);
+
+// Remove from player
+bar.removePlayer(player);
+
+// Update
+bar.setTitle("Progress: 50%");
+bar.setProgress(0.5);  // 0.0 to 1.0
+bar.setColor(BarColor.GREEN);
+bar.setStyle(BarStyle.SEGMENTED_6);
+
+// Cleanup on plugin disable
+bar.removeAll();
+```
+
+### Tab List (Player List Header/Footer)
+
+```java
+player.sendPlayerListHeaderAndFooter(
+    Component.text("Welcome to MyServer!", NamedTextColor.AQUA)
+        .appendNewline()
+        .append(Component.text("Enjoy your stay!", NamedTextColor.WHITE)),
+    Component.text("Players online: " + Bukkit.getOnlinePlayers().size(), NamedTextColor.GRAY)
+        .appendNewline()
+        .append(Component.text("play.myserver.com", NamedTextColor.YELLOW))
+);
+```
+
+### Player Name Prefix/Suffix (Team-based)
+
+```java
+Scoreboard sb = Bukkit.getScoreboardManager().getMainScoreboard();
+Team team = sb.getTeam("admin_team");
+if (team == null) team = sb.registerNewTeam("admin_team");
+team.prefix(Component.text("[Admin] ", NamedTextColor.RED));
+team.color(NamedTextColor.RED); // name color
+team.addEntry(player.getName());
+```
+
+---
+
+## 23. Custom Inventory / GUI Menus
+
+### Basic Custom Inventory
+
+```java
+import net.kyori.adventure.text.Component;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.Material;
+import org.bukkit.Bukkit;
+
+// Create a 27-slot (3 row) inventory
+Inventory gui = Bukkit.createInventory(null, 27,
+    Component.text("My GUI", NamedTextColor.GOLD));
+
+// Add items with click handlers
+ItemStack diamond = ItemsUtils.createItem(Material.DIAMOND, 1, "Claim Reward", List.of("Click to claim!"));
+gui.setItem(13, diamond);  // center slot
+
+player.openInventory(gui);
+```
+
+### Inventory Click Handler
+
+```java
+import org.bukkit.event.inventory.InventoryClickEvent;
+
+@EventHandler
+public void onClick(InventoryClickEvent event) {
+    if (!(event.getView().title().equals(Component.text("My GUI", NamedTextColor.GOLD)))) return;
+    event.setCancelled(true); // prevent item stealing
+
+    if (!(event.getWhoClicked() instanceof Player player)) return;
+    ItemStack clicked = event.getCurrentItem();
+    if (clicked == null) return;
+
+    if (clicked.getType() == Material.DIAMOND) {
+        player.giveExp(100);
+        player.sendMessage(Component.text("Reward claimed!", NamedTextColor.GREEN));
+        player.closeInventory();
+    }
+}
+```
+
+### Paper Custom InventoryHolder (Type-safe)
+
+Paper provides a type-safe way to identify inventories:
+
+```java
+import org.bukkit.inventory.InventoryHolder;
+import org.jetbrains.annotations.NotNull;
+
+public class MyGUI implements InventoryHolder {
+    private final Player owner;
+    private final Inventory inventory;
+
+    public MyGUI(Player owner) {
+        this.owner = owner;
+        this.inventory = Bukkit.createInventory(this, 27,
+            Component.text("My Custom GUI", NamedTextColor.GOLD));
+        // populate items...
+    }
+
+    @NotNull
+    @Override
+    public Inventory getInventory() {
+        return inventory;
+    }
+}
+
+// In InventoryClickEvent handler:
+@EventHandler
+public void onGUIClick(InventoryClickEvent event) {
+    if (event.getInventory().getHolder() instanceof MyGUI gui) {
+        event.setCancelled(true);
+        // Handle click by checking gui.getInventory() slots
+    }
+}
+```
+
+### GUI Libraries
+
+For complex GUIs, consider these frameworks:
+- **Triumph GUI** — annotation-based, pagination, async loading
+- **IF** (Inventory Framework) — Kotlin DSL for GUI creation
+- **Floodgate GUI** — cross-platform GUIs (Java + Bedrock)
+
+---
+
+## 24. Ecosystem Integrations
+
+### Vault (Economy)
+
+```java
+// plugin.yml / paper-plugin.yml dependency:
+// depend: [Vault]
+
+import net.milkbowl.vault.economy.Economy;
+import org.bukkit.plugin.RegisteredServiceProvider;
+
+private Economy economy;
+
+// In onEnable():
+if (!setupEconomy()) {
+    getLogger().severe("Vault economy not found! Disabling.");
+    getServer().getPluginManager().disablePlugin(this);
+    return;
+}
+
+private boolean setupEconomy() {
+    if (getServer().getPluginManager().getPlugin("Vault") == null) return false;
+    RegisteredServiceProvider<Economy> rsp = getServer().getServicesManager()
+        .getRegistration(Economy.class);
+    if (rsp == null) return false;
+    economy = rsp.getProvider();
+    return economy != null;
+}
+
+// Usage:
+@EventHandler
+public void onKill(PlayerDeathEvent event) {
+    if (event.getEntity().getKiller() instanceof Player killer) {
+        economy.depositPlayer(killer, 50.0); // give 50 coins
+        killer.sendMessage(Component.text("+50 coins! Balance: " + economy.getBalance(killer),
+            NamedTextColor.GREEN));
+    }
+}
+```
+
+### PlaceholderAPI
+
+```java
+// plugin.yml dependency:
+// softdepend: [PlaceholderAPI]
+
+// Register custom placeholders:
+import me.clip.placeholderapi.expansion.PlaceholderExpansion;
+
+public class MyExpansion extends PlaceholderExpansion {
+
+    @Override
+    public String getIdentifier() { return "myplugin"; }
+
+    @Override
+    public String getAuthor() { return "YourName"; }
+
+    @Override
+    public String getVersion() { return "1.0.0"; }
+
+    @Override
+    public boolean persist() { return true; }
+
+    @Override
+    public String onPlaceholderRequest(Player player, String params) {
+        if (player == null) return "";
+        if (params.equals("kills")) {
+            return String.valueOf(killTracker.getKills(player));
+        }
+        if (params.equals("coins")) {
+            return String.valueOf((int)economy.getBalance(player));
+        }
+        return null;
+    }
+}
+
+// In onEnable():
+new MyExpansion().register(); // auto-unregisters on disable
+
+// Other plugins can now use: %myplugin_kills%, %myplugin_coins%
+```
+
+### Plugin Messaging Channels (BungeeCord/Velocity)
+
+```java
+// Send player to another server on the proxy:
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
+
+// In onEnable():
+getServer().getMessenger().registerOutgoingPluginChannel(this, "BungeeCord");
+
+// Send player to a server:
+ByteArrayDataOutput out = ByteStreams.newDataOutput();
+out.writeUTF("Connect");
+out.writeUTF("lobby");  // target server name
+player.sendPluginMessage(this, "BungeeCord", out.toByteArray());
+
+// Receive messages from the proxy:
+getServer().getMessenger().registerIncomingPluginChannel(this, "BungeeCord", (channel, player, message) -> {
+    ByteArrayDataInput in = ByteStreams.newDataInput(message);
+    String subChannel = in.readUTF();
+    if (subChannel.equals("PlayerCount")) {
+        String server = in.readUTF();
+        int count = in.readInt();
+        getLogger().info("Server " + server + " has " + count + " players.");
+    }
+});
+```
+
+---
+
+## 25. Best Practices Summary
+
+1. **compileOnly/provided for paper-api** — never bundle the API into your JAR; the server provides it
+2. **Separate listeners, commands, and config into distinct classes** — use the Manager pattern for medium+ plugins
+3. **Use Adventure Components, not legacy ChatColor** — Paper APIs expect Components everywhere
+4. **Use PDC, not NBT reflection** — PDC is the stable, official API for custom persistent data
 5. **Async tasks for I/O** — database, HTTP, and file operations must run off the main thread
 6. **teleportAsync over teleport** — async teleport avoids blocking the main thread
-7. **saveDefaultConfig() in onEnable** — ensures users get a default config file
+7. **saveDefaultConfig() in onEnable** — ensures users get a default config file on first run
 8. **Use NamespacedKey with your plugin name** — prevents data key conflicts between plugins
-9. **Check null before using getPlayer()** — players can be offline/null
-10. **Register commands via LifecycleEvents.COMMANDS** — this is the modern Paper approach
+9. **Check null before using getPlayer()/getPlayerExact()** — players can be offline
+10. **Register commands via LifecycleEvents.COMMANDS** — the modern Paper Brigadier approach
+11. **Use ItemsUtils or similar factory** — centralize ItemStack creation to avoid duplication
+12. **Write a good README** — include commands table, permissions table, config explanation, build instructions
+13. **Never call Bukkit API from async threads** — always switch back with `runTask()` when needed
+14. **Prefer paper-plugin.yml for new plugins** — richer dependency control than plugin.yml
+15. **Use Run-Paper Gradle plugin** — fastest way to spin up a test server during development
+16. **DRY: use gradle.properties** — define version/name once, reference via placeholders
+17. **Write unit tests** — JUnit 5 + Mockito for listener/command logic
+18. **Use GitHub Actions** — automated build, test, and publish workflow
+19. **HikariCP for database connections** — always use a connection pool, never raw JDBC
+20. **Include LICENSE file** — MIT or GPLv3, know the GPL implications of linking Paper API
+21. **Use CustomInventoryHolder** — type-safe GUI identification, not string title matching
+22. **Integrate with Vault for economy** — don't hardcode your own economy if Vault exists
+23. **Provide PlaceholderAPI placeholders** — allows other plugins to display your plugin's data
+24. **Clean up resources in onDisable** — cancel tasks, close DB connections, remove boss bars
 
 ---
 
 ## References
 
+### Official Documentation
 - Paper Docs: https://docs.papermc.io/paper/dev/
 - Paper API Javadoc: https://jd.papermc.io/paper/
 - Adventure Docs: https://docs.advntr.dev/
 - Paper GitHub: https://github.com/PaperMC/paper
-- SpigotMC Forums: https://www.spigotmc.org/forums/spigot-plugin-development.52/
+- PaperMC Docs Repo: https://github.com/PaperMC/docs
+
+### Community & Tutorials
+- SpigotMC Forums (Plugin Dev): https://www.spigotmc.org/forums/spigot-plugin-development.52/
+- 15-Minute Plugin Tutorial (kangarko): https://gist.github.com/kangarko/456d9cfce52dc971b93dbbd12a95f43c
+- VSCode Paper Plugin Guide (luttje): https://github.com/luttje/papermc-vscode-plugin-dev
+- MCBBS 中文教程: https://www.mcbbs.co/thread-3592-1-1.html
+
+### Templates & Examples
+- PaperPluginTemplate (Gradle + CI/CD): https://github.com/Atrimilan/PaperPluginTemplate
+- PaperPluginTemplate (DRY gradle.properties): https://github.com/Ayydxn/PaperPluginTemplate
+- MC-Plugin-Template (Maven + Manager): https://github.com/achillebourgault/MC-Plugin-Template
+- minecraft-plugin-template (Spigot/Paper): https://github.com/atlaska826/minecraft-plugin-template
+- Kotlin-PaperMC-Template: https://github.com/jcurtis06/Kotlin-PaperMC-Template
+- Minecraft-Plugin-Template (Flyway+jOOQ+Triumph): https://github.com/milkdrinkers/Minecraft-Plugin-Template
+- paper-plugin-template (paperweight userdev): https://github.com/LINCKODE/paper-plugin-template
+- CustomEnchantExample (1.21+ Registry API): https://github.com/SaberSupe/CustomEnchantExample
+- MeT-Music (中文 Paper 插件示例): https://github.com/MeTerminator/MeT-Music_MCPlugin
+
+### Libraries & Frameworks
+- twilight (Kotlin API: events, scheduler, scoreboard, GUI, DB): https://github.com/flytegg/twilight
+- helper by lucko (all-in-one: events, scheduler, GUI, scoreboard, messaging): https://github.com/lucko/helper
+- kelp (all-in-one: sidebar, inventory, NPC, commands, config): https://github.com/PXAV/kelp
+- SpigotLib (all-in-one: scoreboard, GUI, packet, economy): https://github.com/gyurix/SpigotLib
+- ACF — Annotation Command Framework (annotation-based commands): https://github.com/aikar/commands
+- cloud — modern command framework (Mojang Brigadier wrapper): https://github.com/Incendo/cloud
+- CommandAPI (Brigadier simplifier): https://github.com/JorelAli/CommandAPI
+- XSeries (cross-version Material/Sound/Particle): https://github.com/CryptoMorin/XSeries
+- AnvilGUI (virtual anvil input): https://github.com/WesJD/AnvilGUI
+- libby (runtime dependency loading): https://github.com/Byteflux/libby
+- spigot-plugin-resources (curated library list): https://github.com/Paul2708/spigot-plugin-resources
+
+### Ecosystem
+- Vault (economy/permissions/chat): https://github.com/MilkBowl/Vault
+- PlaceholderAPI: https://github.com/PlaceholderAPI/PlaceholderAPI
+- ProtocolLib (packet manipulation): https://github.com/dmulloy2/ProtocolLib
+- PacketEvents (modern packet library): https://github.com/retrooper/PacketEvents
